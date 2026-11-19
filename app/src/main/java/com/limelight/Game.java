@@ -1506,6 +1506,15 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             boolean refreshRateIsGood = isRefreshRateGoodMatch(bestMode.getRefreshRate());
             boolean refreshRateIsEqual = isRefreshRateEqualMatch(bestMode.getRefreshRate());
 
+            // Phones may report modes in portrait (ex: 1080x2410), so compare the long and short
+            // sides against the stream resolution.
+            int streamLongSide = Math.max(prefConfig.width, prefConfig.height);
+            int streamShortSide = Math.min(prefConfig.width, prefConfig.height);
+            Display.Mode activeMode = currentDisplay.getMode();
+            boolean activeModeFitsStream =
+                    Math.max(activeMode.getPhysicalWidth(), activeMode.getPhysicalHeight()) >= streamLongSide &&
+                    Math.min(activeMode.getPhysicalWidth(), activeMode.getPhysicalHeight()) >= streamShortSide;
+
             LimeLog.info("Current display mode: "+bestMode.getPhysicalWidth()+"x"+
                     bestMode.getPhysicalHeight()+"x"+bestMode.getRefreshRate());
 
@@ -1537,6 +1546,15 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 // Make sure the resolution doesn't regress unless if it's over 60 FPS
                 // where we may need to reduce resolution to achieve the desired refresh rate.
                 if (resolutionReduced && !(prefConfig.fps > 60 && resolutionFitsStream)) {
+                    continue;
+                }
+
+                // Don't raise the resolution if the active mode can already show the whole stream.
+                // On phones with a lower default resolution (ex: Pixel at 1080p vs 1280p native),
+                // a resolution switch changes the display density for no visual benefit.
+                if (activeModeFitsStream &&
+                        (candidate.getPhysicalWidth() > activeMode.getPhysicalWidth() ||
+                         candidate.getPhysicalHeight() > activeMode.getPhysicalHeight())) {
                     continue;
                 }
 
